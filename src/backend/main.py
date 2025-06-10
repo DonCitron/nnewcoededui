@@ -7,6 +7,8 @@ from loguru import logger
 from src.backend.database.database import init_db
 from src.backend.api.ai import router as ai_router
 from src.backend.api.workspaces import router as workspaces_router
+from src.backend.api.workspaces_bulk import router as workspaces_bulk_router
+from src.backend.api.tasks import router as tasks_router
 from src.backend.api.dashboard import router as dashboard_router
 
 # Configure logger
@@ -36,10 +38,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS for Electron frontend
+# Configure CORS for web access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:*", "file://*"],
+    allow_origins=["*"],  # Allow all origins for demo
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,6 +50,8 @@ app.add_middleware(
 # Include routers
 app.include_router(ai_router)
 app.include_router(workspaces_router)
+app.include_router(workspaces_bulk_router)
+app.include_router(tasks_router)
 app.include_router(dashboard_router)
 
 @app.get("/")

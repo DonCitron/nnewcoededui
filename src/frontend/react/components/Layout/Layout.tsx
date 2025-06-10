@@ -3,6 +3,8 @@ import Sidebar from '../Sidebar/Sidebar';
 import Header from '../Header/Header';
 import Dashboard from '../Dashboard/Dashboard';
 import AIAssistant from '../AIAssistant/AIAssistant';
+import WorkspaceManager from '../WorkspaceManager/WorkspaceManager';
+import TaskManager from '../TaskManager/TaskManager';
 import { useApi } from '../../contexts/ApiContext';
 import './Layout.css';
 
@@ -24,9 +26,9 @@ const Layout: React.FC = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'tasks':
-        return <div className="view-placeholder">Tasks View (Coming Soon)</div>;
+        return <TaskManager />;
       case 'workspaces':
-        return <div className="view-placeholder">Workspaces View (Coming Soon)</div>;
+        return <WorkspaceManager />;
       case 'files':
         return <div className="view-placeholder">Files View (Coming Soon)</div>;
       case 'ai-assistant':

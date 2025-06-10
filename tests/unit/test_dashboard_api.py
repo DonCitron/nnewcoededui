@@ -11,7 +11,7 @@ from src.backend.models.workspace import Workspace
 from src.backend.models.user import User
 
 # Create in-memory SQLite database for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
@@ -19,11 +19,11 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Create tables
-Base.metadata.create_all(bind=engine)
-
 def override_get_db():
     """Override database dependency for testing."""
+    # Create fresh tables for each call
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
     try:
         db = TestingSessionLocal()
         yield db
@@ -37,13 +37,14 @@ client = TestClient(app)
 @pytest.fixture
 def test_db():
     """Create a fresh database for each test."""
+    # Drop and recreate all tables for each test
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture
 def sample_user(test_db):

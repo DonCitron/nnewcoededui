@@ -227,9 +227,9 @@ class TestWorkspaceAPI:
         
         data = response.json()
         assert data["workspace_id"] == workspace_id
-        assert "compatibility_score" in data
+        assert "overall_compatibility" in data
         assert "recommendation" in data
-        assert data["compatibility_score"] > 0.5  # Should be compatible
+        assert data["overall_compatibility"] > 0.5  # Should be compatible
 
     def test_get_workspace_suggestions(self):
         """Test getting AI workspace suggestions"""

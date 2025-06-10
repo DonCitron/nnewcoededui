@@ -52,6 +52,10 @@ class Task(TaskInDBBase):
 class TaskInDB(TaskInDBBase):
     pass
 
+class TaskResponse(TaskInDBBase):
+    """Schema for task API responses"""
+    pass
+
 # Project Schemas
 class ProjectBase(BaseModel):
     name: str

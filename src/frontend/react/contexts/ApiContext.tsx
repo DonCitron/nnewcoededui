@@ -9,7 +9,7 @@ interface ApiContextType {
   makeApiRequest: (endpoint: string, method?: string, data?: any) => Promise<any>;
 }
 
-const ApiContext = createContext<ApiContextType | undefined>(undefined);
+export const ApiContext = createContext<ApiContextType | undefined>(undefined);
 
 interface ApiProviderProps {
   children: ReactNode;
