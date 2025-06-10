@@ -13,7 +13,7 @@
     "dev:backend": "cd src/backend && PYTHONPATH=../.. uvicorn main:app --reload --port 8000",
     "dev:react": "webpack serve --mode development",
     "dev:electron": "wait-on http://localhost:3000 && electron . --dev",
-    "build": "webpack --mode production && electron-builder",
+    "build": "echo 'Backend-only deployment - no frontend build needed'",
     "build:react": "webpack --mode production",
     "test": "jest",
     "test:react": "jest --config jest.react.config.js",
