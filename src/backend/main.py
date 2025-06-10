@@ -1,0 +1,87 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+import uvicorn
+from loguru import logger
+
+from src.backend.database.database import init_db
+from src.backend.api.ai import router as ai_router
+from src.backend.api.workspaces import router as workspaces_router
+from src.backend.api.dashboard import router as dashboard_router
+
+# Configure logger
+logger.add("logs/ordnungshub.log", rotation="10 MB")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("OrdnungsHub backend starting up...")
+    
+    # Initialize database
+    try:
+        init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        
+    yield
+    # Shutdown
+    logger.info("OrdnungsHub backend shutting down...")
+
+# Create FastAPI instance
+app = FastAPI(
+    title="OrdnungsHub API",
+    description="AI-Powered System Organizer Backend",
+    version="0.1.0",
+    lifespan=lifespan
+)
+
+# Configure CORS for Electron frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:*", "file://*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(ai_router)
+app.include_router(workspaces_router)
+app.include_router(dashboard_router)
+
+@app.get("/")
+async def read_root():
+    return {
+        "status": "running",
+        "message": "OrdnungsHub API is operational",
+        "version": "0.1.0"
+    }
+
+@app.get("/health")
+async def health_check():
+    # Check database connection
+    db_status = "operational"
+    try:
+        from src.backend.database.database import SessionLocal
+        db = SessionLocal()
+        # Try a simple query
+        db.execute("SELECT 1")
+        db.close()
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+        
+    return {
+        "status": "healthy",
+        "backend": "operational",
+        "database": db_status
+    }
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )
