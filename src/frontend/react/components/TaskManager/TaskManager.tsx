@@ -6,12 +6,34 @@ interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'pending' | 'in-progress' | 'done' | 'blocked';
+  status: 'pending' | 'in-progress' | 'done' | 'blocked' | 'completed';
   priority: 'low' | 'medium' | 'high';
   dependencies?: string[];
   subtasks?: Task[];
   details?: string;
   testStrategy?: string;
+  workspace_id?: number;
+  related_files?: string[];
+}
+
+interface Workspace {
+  id: number;
+  name: string;
+  color: string;
+}
+
+interface WorkspaceTaskOverview {
+  workspace_name: string;
+  workspace_color: string;
+  statistics: {
+    total_tasks: number;
+    completed_tasks: number;
+    in_progress_tasks: number;
+    pending_tasks: number;
+    completion_rate: number;
+  };
+  recent_tasks: Task[];
+  tasks: Task[];
 }
 
 interface TaskProgress {
@@ -43,20 +65,80 @@ const TaskManager: React.FC = () => {
   const [progress, setProgress] = useState<TaskProgress | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'dependencies' | 'add'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'dependencies' | 'add' | 'workspace-overview'>('overview');
   const [complexityReport, setComplexityReport] = useState<any>(null);
+  
+  // Workspace integration state
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [workspaceOverview, setWorkspaceOverview] = useState<{[key: number]: WorkspaceTaskOverview}>({});
+  const [selectedWorkspace, setSelectedWorkspace] = useState<number | null>(null);
+  const [workspaceSuggestions, setWorkspaceSuggestions] = useState<any[]>([]);
   
   // New task form
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
     priority: 'medium' as 'low' | 'medium' | 'high',
-    dependencies: [] as string[]
+    dependencies: [] as string[],
+    workspace_id: null as number | null
   });
 
   useEffect(() => {
     loadTaskData();
+    loadWorkspaces();
   }, []);
+
+  const loadWorkspaces = async () => {
+    try {
+      const response = await makeApiRequest('/workspaces/');
+      setWorkspaces(response);
+    } catch (error) {
+      console.error('Failed to load workspaces:', error);
+    }
+  };
+
+  const loadWorkspaceOverview = async () => {
+    try {
+      const response = await makeApiRequest('/tasks/taskmaster/workspace-overview');
+      if (response.success) {
+        setWorkspaceOverview(response.overview);
+      }
+    } catch (error) {
+      console.error('Failed to load workspace overview:', error);
+    }
+  };
+
+  const suggestWorkspaceForTask = async (title: string, description: string) => {
+    try {
+      const response = await makeApiRequest('/tasks/taskmaster/suggest-workspace', 'POST', {
+        title,
+        description
+      });
+      if (response.success) {
+        setWorkspaceSuggestions(response.suggestions);
+        return response.auto_suggestion;
+      }
+    } catch (error) {
+      console.error('Failed to get workspace suggestions:', error);
+    }
+    return null;
+  };
+
+  const linkTaskToWorkspace = async (taskId: string, workspaceId: number) => {
+    try {
+      const response = await makeApiRequest(`/tasks/taskmaster/${taskId}/link-workspace`, 'POST', {
+        task_id: taskId,
+        workspace_id: workspaceId
+      });
+      if (response.success) {
+        loadTaskData(); // Reload tasks to show updated workspace links
+        return true;
+      }
+    } catch (error) {
+      console.error('Failed to link task to workspace:', error);
+    }
+    return false;
+  };
 
   const loadTaskData = async () => {
     setIsLoading(true);
@@ -126,13 +208,40 @@ const TaskManager: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await makeApiRequest('/tasks/taskmaster/add', 'POST', newTask);
-      setNewTask({ title: '', description: '', priority: 'medium', dependencies: [] });
+      
+      // Get AI workspace suggestion if no workspace is selected
+      let taskToAdd = { ...newTask };
+      if (!taskToAdd.workspace_id && taskToAdd.title) {
+        const suggestion = await suggestWorkspaceForTask(taskToAdd.title, taskToAdd.description || '');
+        if (suggestion && suggestion.confidence > 0.65) {  // Lower threshold for better matching
+          taskToAdd.workspace_id = suggestion.workspace_id;
+        }
+      }
+      
+      await makeApiRequest('/tasks/taskmaster/add', 'POST', taskToAdd);
+      setNewTask({ 
+        title: '', 
+        description: '', 
+        priority: 'medium', 
+        dependencies: [], 
+        workspace_id: null 
+      });
+      setWorkspaceSuggestions([]);
       await loadTaskData();
     } catch (error) {
       console.error('Failed to add task:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTaskInputChange = async (field: string, value: any) => {
+    const updatedTask = { ...newTask, [field]: value };
+    setNewTask(updatedTask);
+    
+    // Trigger workspace suggestions when title is available (description optional)
+    if (updatedTask.title.trim() && !updatedTask.workspace_id) {
+      await suggestWorkspaceForTask(updatedTask.title, updatedTask.description || '');
     }
   };
 
@@ -188,6 +297,17 @@ const TaskManager: React.FC = () => {
           >
             {task.priority}
           </span>
+          {task.workspace_id && (
+            <span 
+              className="workspace-badge"
+              style={{ 
+                backgroundColor: workspaces.find(w => w.id === task.workspace_id)?.color || '#6b7280',
+                color: 'white'
+              }}
+            >
+              🗂️ {workspaces.find(w => w.id === task.workspace_id)?.name || 'Unknown'}
+            </span>
+          )}
         </div>
       </div>
       
@@ -329,6 +449,15 @@ const TaskManager: React.FC = () => {
         >
           Add Task
         </button>
+        <button 
+          className={`tab ${activeTab === 'workspace-overview' ? 'active' : ''}`}
+          onClick={() => {
+            setActiveTab('workspace-overview');
+            loadWorkspaceOverview();
+          }}
+        >
+          🗂️ Workspaces
+        </button>
       </div>
 
       <div className="task-manager-content">
@@ -428,28 +557,31 @@ const TaskManager: React.FC = () => {
             <h3>Add New Task</h3>
             <div className="add-task-form">
               <div className="form-group">
-                <label>Title *</label>
+                <label htmlFor="task-title">Title *</label>
                 <input
+                  id="task-title"
                   type="text"
                   value={newTask.title}
-                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  onChange={(e) => handleTaskInputChange('title', e.target.value)}
                   placeholder="Enter task title..."
                 />
               </div>
               
               <div className="form-group">
-                <label>Description</label>
+                <label htmlFor="task-description">Description</label>
                 <textarea
+                  id="task-description"
                   value={newTask.description}
-                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                  onChange={(e) => handleTaskInputChange('description', e.target.value)}
                   placeholder="Describe the task..."
                   rows={4}
                 />
               </div>
               
               <div className="form-group">
-                <label>Priority</label>
+                <label htmlFor="task-priority">Priority</label>
                 <select
+                  id="task-priority"
                   value={newTask.priority}
                   onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })}
                 >
@@ -459,6 +591,57 @@ const TaskManager: React.FC = () => {
                 </select>
               </div>
               
+              <div className="form-group">
+                <label htmlFor="workspace-select">Workspace</label>
+                <select
+                  id="workspace-select"
+                  value={newTask.workspace_id || ''}
+                  onChange={(e) => {
+                    if (e.target.value === 'create_new') {
+                      // TODO: Implement create new workspace functionality
+                      alert('Create new workspace functionality will be implemented');
+                    } else {
+                      setNewTask({ ...newTask, workspace_id: e.target.value ? parseInt(e.target.value) : null });
+                    }
+                  }}
+                >
+                  <option value="">🤖 Let AI suggest (recommended)</option>
+                  <option value="create_new">➕ Create New Workspace</option>
+                  {workspaces.map(workspace => (
+                    <option key={workspace.id} value={workspace.id}>
+                      🗂️ {workspace.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {workspaceSuggestions.length > 0 && (
+                <div className="workspace-suggestions">
+                  <h4>🤖 AI Workspace Vorschläge:</h4>
+                  <div className="suggestions-list">
+                    {workspaceSuggestions.map((suggestion, index) => (
+                      <div 
+                        key={index} 
+                        className="suggestion-item"
+                        onClick={() => setNewTask({ ...newTask, workspace_id: suggestion.workspace_id })}
+                      >
+                        <div className="suggestion-header">
+                          <span className="workspace-name" style={{ color: workspaces.find(w => w.id === suggestion.workspace_id)?.color }}>
+                            🗂️ {suggestion.workspace_name}
+                          </span>
+                          <span className="confidence-badge">
+                            {Math.round(suggestion.confidence * 100)}% sicher
+                          </span>
+                        </div>
+                        <div className="suggestion-reason">
+                          {suggestion.reason}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <button
                 onClick={handleAddTask}
                 disabled={!newTask.title.trim() || isLoading}
@@ -467,6 +650,94 @@ const TaskManager: React.FC = () => {
                 {isLoading ? 'Adding...' : 'Add Task with AI'}
               </button>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'workspace-overview' && (
+          <div className="workspace-overview-tab">
+            <h3>🗂️ Tasks by Workspace</h3>
+            
+            {Object.keys(workspaceOverview).length === 0 ? (
+              <div className="loading-state">
+                <p>Loading workspace overview...</p>
+              </div>
+            ) : (
+              <div className="workspace-overview-grid">
+                {Object.entries(workspaceOverview).map(([workspaceId, overview]) => (
+                  <div key={workspaceId} className="workspace-overview-card">
+                    <div className="workspace-header">
+                      <div className="workspace-info">
+                        <h4 style={{ color: overview.workspace_color }}>
+                          🗂️ {overview.workspace_name}
+                        </h4>
+                        <div className="completion-rate">
+                          {overview.statistics.completion_rate.toFixed(1)}% complete
+                        </div>
+                      </div>
+                      <div className="task-count">
+                        {overview.statistics.total_tasks} tasks
+                      </div>
+                    </div>
+                    
+                    <div className="workspace-stats">
+                      <div className="stat-item completed">
+                        <span className="stat-number">{overview.statistics.completed_tasks}</span>
+                        <span className="stat-label">Completed</span>
+                      </div>
+                      <div className="stat-item in-progress">
+                        <span className="stat-number">{overview.statistics.in_progress_tasks}</span>
+                        <span className="stat-label">In Progress</span>
+                      </div>
+                      <div className="stat-item pending">
+                        <span className="stat-number">{overview.statistics.pending_tasks}</span>
+                        <span className="stat-label">Pending</span>
+                      </div>
+                    </div>
+                    
+                    {overview.recent_tasks.length > 0 && (
+                      <div className="recent-tasks">
+                        <h5>Recent Tasks:</h5>
+                        {overview.recent_tasks.map(task => (
+                          <div key={task.id} className="mini-task-card">
+                            <span className="mini-task-title">{task.title}</span>
+                            <span 
+                              className="mini-task-status"
+                              style={{ backgroundColor: getStatusColor(task.status) }}
+                            >
+                              {task.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="workspace-actions">
+                      <button 
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => setSelectedWorkspace(parseInt(workspaceId))}
+                      >
+                        View All Tasks
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {selectedWorkspace && workspaceOverview[selectedWorkspace] && (
+              <div className="workspace-detail">
+                <h4>All Tasks in {workspaceOverview[selectedWorkspace].workspace_name}</h4>
+                <div className="workspace-tasks-list">
+                  {workspaceOverview[selectedWorkspace].tasks.map(task => renderTaskCard(task))}
+                </div>
+                <button 
+                  className="btn btn-secondary"
+                  onClick={() => setSelectedWorkspace(null)}
+                >
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

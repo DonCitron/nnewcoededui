@@ -15,7 +15,14 @@ module.exports = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: 'ts-loader',
+        use: {
+          loader: 'ts-loader',
+          options: {
+            compilerOptions: {
+              noEmit: false,
+            },
+          },
+        },
         exclude: [/node_modules/, /setupTests\.ts$/, /\.test\.tsx?$/, /\.spec\.tsx?$/],
       },
       {
@@ -44,6 +51,15 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './src/frontend/react/public/index.html',
       filename: 'index.html',
+      meta: {
+        'Content-Security-Policy': "default-src 'self'; \
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+          font-src 'self' https://fonts.gstatic.com data:; \
+          img-src 'self' data: blob:; \
+          connect-src 'self' http://localhost:8001 http://127.0.0.1:8001 ws:; \
+          script-src 'self' 'unsafe-eval' 'unsafe-inline'; \
+          frame-ancestors 'self';"
+      }
     }),
   ],
   
@@ -52,16 +68,28 @@ module.exports = {
       directory: path.join(__dirname, 'dist'),
     },
     compress: true,
-    port: 3000,
+    port: 3001,
     hot: true,
-    open: false, // Don't open browser automatically (Electron will handle this)
+    open: false,
     historyApiFallback: true,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
+    allowedHosts: 'all',
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+    },
+    devMiddleware: {
+      writeToDisk: false,
     },
   },
   
-  target: 'electron-renderer',
+  target: 'web',
+  node: {
+    global: true,
+    __dirname: true,
+    __filename: true,
+  },
   
   devtool: process.env.NODE_ENV === 'production' ? 'source-map' : 'eval-source-map',
 };

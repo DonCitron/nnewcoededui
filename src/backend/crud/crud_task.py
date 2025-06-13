@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from src.backend.crud.base import CRUDBase
 from src.backend.models.task import Task, Project, TaskStatus, TaskPriority
 from src.backend.schemas.task import TaskCreate, TaskUpdate, ProjectCreate, ProjectUpdate
@@ -47,7 +47,7 @@ class CRUDTask(CRUDBase[Task, TaskCreate, TaskUpdate]):
         self, db: Session, *, user_id: int, days: int = 7
     ) -> List[Task]:
         """Get tasks due within specified days"""
-        due_date = datetime.utcnow() + timedelta(days=days)
+        due_date = datetime.now(timezone.utc) + timedelta(days=days)
         return db.query(Task).filter(
             Task.user_id == user_id,
             Task.due_date <= due_date,
@@ -56,7 +56,7 @@ class CRUDTask(CRUDBase[Task, TaskCreate, TaskUpdate]):
 
     def get_overdue(self, db: Session, *, user_id: int) -> List[Task]:
         """Get overdue tasks"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return db.query(Task).filter(
             Task.user_id == user_id,
             Task.due_date < now,
@@ -68,7 +68,7 @@ class CRUDTask(CRUDBase[Task, TaskCreate, TaskUpdate]):
         task = db.query(Task).filter(Task.id == task_id).first()
         if task:
             task.status = TaskStatus.COMPLETED
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
             db.commit()
             db.refresh(task)
         return task

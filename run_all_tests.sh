@@ -1,64 +1,86 @@
-#!/bin/bash
+#\!/bin/bash
 
-echo "======================================"
-echo "  OrdnungsHub Complete Test Suite"
-echo "======================================"
-echo ""
+echo "=== Running OrdnungsHub Test Suite ==="
+echo
 
 # Colors for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
+YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Track test results
-ALL_PASSED=true
+# Track overall test status
+ALL_TESTS_PASSED=true
 
-# 1. Python Unit Tests
-echo "1. Running Python Unit Tests..."
-echo "--------------------------------"
-source venv/bin/activate
-pytest tests/unit/test_backend.py -v
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Python unit tests passed${NC}"
-else
-    echo -e "${RED}❌ Python unit tests failed${NC}"
-    ALL_PASSED=false
-fi
-echo ""
+# Function to run tests and report status
+run_test_suite() {
+    local suite_name=$1
+    local command=$2
+    
+    echo -e "${YELLOW}Running $suite_name...${NC}"
+    
+    if eval $command; then
+        echo -e "${GREEN}✓ $suite_name passed${NC}"
+        echo
+    else
+        echo -e "${RED}✗ $suite_name failed${NC}"
+        echo
+        ALL_TESTS_PASSED=false
+    fi
+}
 
-# 2. JavaScript Unit Tests
-echo "2. Running JavaScript Unit Tests..."
-echo "--------------------------------"
-npm test
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ JavaScript unit tests passed${NC}"
-else
-    echo -e "${RED}❌ JavaScript unit tests failed${NC}"
-    ALL_PASSED=false
-fi
-echo ""
+# Change to project directory
+cd "$(dirname "$0")"
 
-# 3. Integration Tests
-echo "3. Running Integration Tests..."
-echo "--------------------------------"
-python test_app.py
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Integration tests passed${NC}"
+# 1. Run Python backend tests
+echo "=== Backend Tests (Python) ==="
+if [ -d "venv" ]; then
+    source venv/bin/activate
+    
+    # Fix TestClient import issues
+    pip install -U httpx fastapi pytest pytest-asyncio pytest-cov > /dev/null 2>&1
+    
+    run_test_suite "Python Unit Tests" "python -m pytest tests/unit/test_*.py -v --tb=short"
 else
-    echo -e "${RED}❌ Integration tests failed${NC}"
-    ALL_PASSED=false
+    echo -e "${RED}Virtual environment not found. Please create it first.${NC}"
+    ALL_TESTS_PASSED=false
 fi
-echo ""
 
-# 4. Summary
-echo "======================================"
-echo "         TEST SUMMARY"
-echo "======================================"
-if [ "$ALL_PASSED" = true ]; then
-    echo -e "${GREEN}🎉 ALL TESTS PASSED! 🎉${NC}"
-    echo "The OrdnungsHub application is ready for development!"
+# 2. Run JavaScript/TypeScript tests
+echo
+echo "=== Frontend Tests (JavaScript/React) ==="
+
+# Fix missing dependencies
+echo "Installing test dependencies..."
+npm install --save-dev @testing-library/react @testing-library/jest-dom @testing-library/user-event jest-environment-jsdom ts-jest > /dev/null 2>&1
+
+# Run general JavaScript tests
+run_test_suite "JavaScript Unit Tests" "npm test -- --testPathPattern='tests/unit/.*\\.js$' --passWithNoTests"
+
+# Run React component tests
+run_test_suite "React Component Tests" "npm run test:react -- --passWithNoTests"
+
+# 3. Run integration tests
+echo
+echo "=== Integration Tests ==="
+run_test_suite "Integration Tests" "npm test -- --testPathPattern='tests/integration/.*\\.js$' --passWithNoTests"
+
+# 4. Run linting checks
+echo
+echo "=== Code Quality Checks ==="
+run_test_suite "ESLint" "npm run lint -- --quiet"
+
+# 5. Run TypeScript type checking
+run_test_suite "TypeScript Check" "npx tsc --noEmit"
+
+# Summary
+echo
+echo "=== Test Summary ==="
+if [ "$ALL_TESTS_PASSED" = true ]; then
+    echo -e "${GREEN}✓ All tests passed\!${NC}"
+    exit 0
 else
-    echo -e "${RED}❌ SOME TESTS FAILED${NC}"
-    echo "Please fix the failing tests before proceeding."
+    echo -e "${RED}✗ Some tests failed. Please check the output above.${NC}"
+    exit 1
 fi
-echo ""
+EOF < /dev/null

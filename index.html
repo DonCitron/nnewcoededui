@@ -427,11 +427,11 @@
         // Detect API base URL
         async function detectAPIBase() {
             const possibleUrls = [
+                'http://localhost:8000',
+                'http://127.0.0.1:8000',
                 'https://ordnungshub-production.up.railway.app',
                 'https://ordnungshub.herokuapp.com',
-                'https://ordnungshub.vercel.app',
-                'http://127.0.0.1:8000',
-                'http://localhost:8000'
+                'https://ordnungshub.vercel.app'
             ];
             
             for (const url of possibleUrls) {

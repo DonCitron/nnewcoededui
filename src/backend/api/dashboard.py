@@ -153,10 +153,10 @@ async def get_recent_activity(db: Session = Depends(get_db), limit: int = 10) ->
                 "id": workspace.id
             })
         
-        # Sort by timestamp (most recent first)
+        # Sort by timestamp (most recent first), handling None values
         activities = sorted(
             activities, 
-            key=lambda x: x.get("timestamp", ""), 
+            key=lambda x: x.get("timestamp") or "1970-01-01T00:00:00", 
             reverse=True
         )[:limit]
         

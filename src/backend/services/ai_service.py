@@ -243,6 +243,74 @@ class LocalAIService:
         
         return result
 
+    async def generate_suggestions(self, task_description: str) -> List[str]:
+        """Generate task suggestions based on description"""
+        if not task_description or not task_description.strip():
+            return []
+        
+        # Analyze the task description
+        analysis = await self.analyze_text(task_description)
+        
+        suggestions = []
+        
+        # Add category-based suggestions
+        category = analysis.get('category', 'general')
+        if category == 'work':
+            suggestions.extend([
+                "Schedule a meeting to discuss requirements",
+                "Create a project timeline",
+                "Assign team members to specific tasks",
+                "Set up progress tracking system"
+            ])
+        elif category == 'personal':
+            suggestions.extend([
+                "Set a reminder for this task",
+                "Break down into smaller steps",
+                "Schedule time in calendar",
+                "Prepare necessary materials"
+            ])
+        elif category == 'finance':
+            suggestions.extend([
+                "Review budget constraints",
+                "Compare different options",
+                "Consult with financial advisor",
+                "Keep receipts and documentation"
+            ])
+        else:
+            suggestions.extend([
+                "Research best practices",
+                "Create a checklist",
+                "Set realistic deadlines",
+                "Identify potential obstacles"
+            ])
+        
+        # Add priority-based suggestions
+        priority = analysis.get('priority', 'medium')
+        if priority == 'urgent' or priority == 'high':
+            suggestions.extend([
+                "Start immediately",
+                "Allocate dedicated time",
+                "Minimize distractions"
+            ])
+        elif priority == 'low':
+            suggestions.extend([
+                "Schedule for later",
+                "Consider delegating",
+                "Combine with similar tasks"
+            ])
+        
+        # Add keyword-based suggestions
+        keywords = analysis.get('keywords', [])
+        if any(word in keywords for word in ['meeting', 'call', 'contact']):
+            suggestions.append("Prepare agenda and talking points")
+        if any(word in keywords for word in ['document', 'report', 'write']):
+            suggestions.append("Create outline before writing")
+        if any(word in keywords for word in ['buy', 'purchase', 'order']):
+            suggestions.append("Compare prices and reviews")
+        
+        # Return unique suggestions, limited to 8
+        return list(dict.fromkeys(suggestions))[:8]
+
     def get_status(self) -> Dict[str, Any]:
         """Get service status"""
         return {
@@ -256,7 +324,8 @@ class LocalAIService:
                 'category_suggestion',
                 'keyword_extraction',
                 'tag_suggestion',
-                'file_categorization'
+                'file_categorization',
+                'task_suggestions'
             ],
             'models': 'rule-based',
             'privacy': 'fully_local'

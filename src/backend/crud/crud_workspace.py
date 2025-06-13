@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.backend.crud.base import CRUDBase
 from src.backend.models.workspace import Workspace
@@ -58,7 +58,7 @@ class CRUDWorkspace(CRUDBase[Workspace, WorkspaceCreate, WorkspaceUpdate]):
         """Mark workspace as recently accessed"""
         workspace = db.query(self.model).filter(Workspace.id == workspace_id).first()
         if workspace:
-            workspace.last_accessed_at = datetime.utcnow()
+            workspace.last_accessed_at = datetime.now(timezone.utc)
             db.add(workspace)
             db.commit()
             db.refresh(workspace)
@@ -78,7 +78,7 @@ class CRUDWorkspace(CRUDBase[Workspace, WorkspaceCreate, WorkspaceUpdate]):
             current_state = workspace.layout_config or {}
             current_state.update(state)
             workspace.layout_config = current_state
-            workspace.updated_at = datetime.utcnow()
+            workspace.updated_at = datetime.now(timezone.utc)
             db.add(workspace)
             db.commit()
             db.refresh(workspace)
@@ -96,7 +96,7 @@ class CRUDWorkspace(CRUDBase[Workspace, WorkspaceCreate, WorkspaceUpdate]):
         workspace = db.query(self.model).filter(Workspace.id == workspace_id).first()
         if workspace and workspace.user_id == user_id:
             workspace.is_default = True
-            workspace.updated_at = datetime.utcnow()
+            workspace.updated_at = datetime.now(timezone.utc)
             db.add(workspace)
             db.commit()
             db.refresh(workspace)

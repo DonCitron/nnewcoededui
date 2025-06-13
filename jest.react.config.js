@@ -2,6 +2,10 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/frontend/react/setupTests.ts'],
+  globals: {
+    TextEncoder: require('util').TextEncoder,
+    TextDecoder: require('util').TextDecoder,
+  },
   testMatch: [
     '<rootDir>/tests/react/**/*.(test|spec).(ts|tsx|js)',
     '<rootDir>/src/frontend/react/**/__tests__/**/*.(ts|tsx|js)',

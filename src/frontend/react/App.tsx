@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ApiProvider } from './contexts/ApiContext';
@@ -15,9 +16,12 @@ const App: React.FC = () => {
 
   const checkApiConnection = async () => {
     try {
-      // Check if we're running in Electron
-      if (window.electronAPI) {
-        const response = await window.electronAPI.apiRequest('/', 'GET');
+      // Add global object for browser compatibility
+  (window as any).global = window;
+  
+  // Check if we're running in Electron
+  if ((window as any).electronAPI) {
+        const response = await (window as any).electronAPI.apiRequest('/', 'GET');
         if (response.status === 'running') {
           setApiStatus('connected');
         } else {
@@ -51,13 +55,15 @@ const App: React.FC = () => {
   }
 
   return (
-    <ThemeProvider>
-      <ApiProvider apiStatus={apiStatus} onRetryConnection={checkApiConnection}>
-        <div className="app">
-          <Layout />
-        </div>
-      </ApiProvider>
-    </ThemeProvider>
+    <Router>
+      <ThemeProvider>
+        <ApiProvider apiStatus={apiStatus} onRetryConnection={checkApiConnection}>
+          <div className="app">
+            <Layout />
+          </div>
+        </ApiProvider>
+      </ThemeProvider>
+    </Router>
   );
 };
 

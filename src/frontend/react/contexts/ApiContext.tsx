@@ -31,9 +31,9 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({
 
   const makeApiRequest = async (endpoint: string, method = 'GET', data?: any): Promise<any> => {
     try {
-      if (window.electronAPI) {
+      if ((window as any).electronAPI) {
         // Use Electron API
-        return await window.electronAPI.apiRequest(endpoint, method, data);
+        return await (window as any).electronAPI.apiRequest(endpoint, method, data);
       } else {
         // Fallback for development in browser
         const url = `http://127.0.0.1:8000${endpoint}`;

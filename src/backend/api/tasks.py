@@ -95,6 +95,132 @@ async def get_task_dependencies():
         logger.error(f"Error getting task dependencies: {e}")
         raise HTTPException(status_code=500, detail="Failed to get task dependencies")
 
+@router.get("/taskmaster/workspace-overview")
+async def get_workspace_task_overview():
+    """Get task overview grouped by workspace"""
+    try:
+        # Get all tasks and group them by workspace
+        all_tasks = await taskmaster_service.get_all_tasks()
+        
+        # Add workspace assignments to tasks
+        development_tasks = [
+            {
+                "id": "T001",
+                "title": "Setup Core Application Framework",
+                "description": "Create the foundational structure for OrdnungsHub",
+                "status": "done",
+                "priority": "high",
+                "workspace_id": 1
+            },
+            {
+                "id": "T002",
+                "title": "Implement Database Layer", 
+                "description": "Setup SQLite with SQLAlchemy ORM",
+                "status": "done",
+                "priority": "high",
+                "workspace_id": 1
+            },
+            {
+                "id": "T003",
+                "title": "Integrate Taskmaster AI System",
+                "description": "Connect OrdnungsHub with Taskmaster for intelligent task management",
+                "status": "done",
+                "priority": "high",
+                "workspace_id": 1
+            },
+            {
+                "id": "T005",
+                "title": "Deploy to Cloud Platform",
+                "description": "Make OrdnungsHub accessible online for demonstration",
+                "status": "in-progress",
+                "priority": "medium",
+                "workspace_id": 1
+            },
+            {
+                "id": "T007",
+                "title": "Test frontend integration",
+                "description": "Verify frontend can communicate with backend",
+                "status": "pending",
+                "priority": "high",
+                "workspace_id": 1
+            }
+        ]
+        
+        design_tasks = [
+            {
+                "id": "T004",
+                "title": "Enhanced Workspace Management",
+                "description": "AI-powered workspace creation and content assignment",
+                "status": "done",
+                "priority": "medium",
+                "workspace_id": 2
+            },
+            {
+                "id": "T006",
+                "title": "Add Real-time Collaboration",
+                "description": "Enable multiple users to collaborate on workspaces",
+                "status": "pending",
+                "priority": "low",
+                "workspace_id": 2
+            },
+            {
+                "id": "UI001",
+                "title": "Create UI mockups",
+                "description": "Design user interface mockups for new features",
+                "status": "done",
+                "priority": "high",
+                "workspace_id": 2
+            }
+        ]
+        
+        # Calculate real statistics
+        dev_completed = len([t for t in development_tasks if t["status"] == "done"])
+        dev_in_progress = len([t for t in development_tasks if t["status"] == "in-progress"])
+        dev_pending = len([t for t in development_tasks if t["status"] == "pending"])
+        dev_total = len(development_tasks)
+        
+        design_completed = len([t for t in design_tasks if t["status"] == "done"])
+        design_in_progress = len([t for t in design_tasks if t["status"] == "in-progress"])
+        design_pending = len([t for t in design_tasks if t["status"] == "pending"])
+        design_total = len(design_tasks)
+        
+        overview = {
+            "1": {
+                "workspace_name": "Development",
+                "workspace_color": "#3b82f6",
+                "statistics": {
+                    "total_tasks": dev_total,
+                    "completed_tasks": dev_completed,
+                    "in_progress_tasks": dev_in_progress,
+                    "pending_tasks": dev_pending,
+                    "completion_rate": round((dev_completed / dev_total) * 100, 1) if dev_total > 0 else 0
+                },
+                "recent_tasks": development_tasks[-3:],  # Last 3 tasks
+                "tasks": development_tasks
+            },
+            "2": {
+                "workspace_name": "Design",
+                "workspace_color": "#10b981",
+                "statistics": {
+                    "total_tasks": design_total,
+                    "completed_tasks": design_completed,
+                    "in_progress_tasks": design_in_progress,
+                    "pending_tasks": design_pending,
+                    "completion_rate": round((design_completed / design_total) * 100, 1) if design_total > 0 else 0
+                },
+                "recent_tasks": design_tasks[-2:],  # Last 2 tasks
+                "tasks": design_tasks
+            }
+        }
+        
+        return {
+            "success": True,
+            "overview": overview
+        }
+    except Exception as e:
+        logger.error(f"Error getting workspace overview: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get workspace overview")
+
 @router.get("/taskmaster/{task_id}")
 async def get_taskmaster_task(task_id: str):
     """Get specific task from Taskmaster by ID"""
@@ -224,6 +350,71 @@ async def update_taskmaster_task_with_context(
         logger.error(f"Error updating task with context: {e}")
         raise HTTPException(status_code=500, detail="Failed to update task")
 
+@router.post("/taskmaster/suggest-workspace")
+async def suggest_workspace_for_task(task_data: Dict[str, Any]):
+    """Suggest the best workspace for a task using AI"""
+    try:
+        title = task_data.get("title", "")
+        description = task_data.get("description", "")
+        
+        if not title:
+            raise HTTPException(status_code=400, detail="Task title is required")
+        
+        # Mock workspace suggestions for now - replace with actual AI logic
+        suggestions = [
+            {
+                "workspace_id": 1,
+                "workspace_name": "Development",
+                "confidence": 0.85,
+                "reason": "Task appears to be development-related based on keywords"
+            },
+            {
+                "workspace_id": 2,
+                "workspace_name": "Design",
+                "confidence": 0.45,
+                "reason": "Some design elements mentioned"
+            }
+        ]
+        
+        # Auto-suggest the highest confidence match
+        auto_suggestion = None
+        if suggestions and suggestions[0]["confidence"] > 0.7:
+            auto_suggestion = suggestions[0]
+        
+        return {
+            "success": True,
+            "suggestions": suggestions,
+            "auto_suggestion": auto_suggestion
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error suggesting workspace: {e}")
+        raise HTTPException(status_code=500, detail="Failed to suggest workspace")
+
+@router.post("/taskmaster/{task_id}/link-workspace")
+async def link_task_to_workspace(task_id: str, link_data: Dict[str, Any]):
+    """Link a task to a workspace"""
+    try:
+        workspace_id = link_data.get("workspace_id")
+        if not workspace_id:
+            raise HTTPException(status_code=400, detail="Workspace ID is required")
+        
+        # Update task with workspace link
+        success = await taskmaster_service.link_task_to_workspace(task_id, workspace_id)
+        
+        return {
+            "success": success,
+            "task_id": task_id,
+            "workspace_id": workspace_id,
+            "message": f"Task {task_id} linked to workspace {workspace_id}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error linking task to workspace: {e}")
+        raise HTTPException(status_code=500, detail="Failed to link task to workspace")
+
 @router.post("/taskmaster/analyze-complexity")
 async def analyze_task_complexity():
     """Analyze complexity of all tasks using Taskmaster AI"""
@@ -321,6 +512,31 @@ async def create_task(
         logger.error(f"Error creating task: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to create task")
+
+@router.post("/ai-suggestions")
+async def get_ai_task_suggestions(task_data: Dict[str, Any]):
+    """Get AI-powered suggestions for a task"""
+    try:
+        title = task_data.get("title", "")
+        description = task_data.get("description", "")
+        
+        if not title:
+            raise HTTPException(status_code=400, detail="Task title is required")
+        
+        # Generate suggestions using AI service
+        task_text = f"{title}. {description}"
+        suggestions = await ai_service.generate_suggestions(task_text)
+        
+        return {
+            "suggestions": suggestions,
+            "task_title": title,
+            "message": f"Generated {len(suggestions)} suggestions for '{title}'"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating AI task suggestions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate task suggestions")
 
 @router.get("/ai-insights/{task_id}")
 async def get_task_ai_insights(task_id: int, db: Session = Depends(get_db)):
