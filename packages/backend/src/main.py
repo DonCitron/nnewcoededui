@@ -14,6 +14,9 @@ from api.files import router as files_router
 from api.file_management import router as file_management_router
 from api.search import router as search_router
 from api.automation import router as automation_router
+from api.error_logs import router as error_logs_router
+from api.settings import router as settings_router
+from api.workspace_files import router as workspace_files_router
 
 # Configure logger
 logger.add("logs/ordnungshub.log", rotation="10 MB")
@@ -32,7 +35,7 @@ async def lifespan(app: FastAPI):
     
     # Seed database with demo data if needed (disabled for development)
     # try:
-    #     from src.backend.database.seed import seed_database
+    #     from database.seed import seed_database
     #     seed_database()
     #     logger.info("Database seeding completed")
     # except Exception as e:
@@ -72,6 +75,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(ai_router)
+app.include_router(workspace_files_router)
 app.include_router(workspaces_router)
 app.include_router(workspaces_bulk_router)
 app.include_router(tasks_router)
@@ -80,6 +84,8 @@ app.include_router(files_router)
 app.include_router(file_management_router)
 app.include_router(search_router)
 app.include_router(automation_router)
+app.include_router(error_logs_router)
+app.include_router(settings_router)
 
 @app.get("/")
 async def read_root():

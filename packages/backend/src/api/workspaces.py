@@ -8,15 +8,15 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from loguru import logger
 
-from src.backend.database.database import get_db
-from src.backend.models.workspace import Workspace, WorkspaceTheme
-from src.backend.schemas.workspace import (
+from database.database import get_db
+from models.workspace import Workspace, WorkspaceTheme
+from schemas.workspace import (
     WorkspaceCreate, WorkspaceUpdate, WorkspaceResponse,
     WorkspaceStateUpdate, WorkspaceThemeCreate
 )
-from src.backend.crud.crud_workspace import workspace as crud_workspace
-from src.backend.services.ai_service import ai_service
-from src.backend.api.workspaces_enhanced import (
+from crud.crud_workspace import workspace as crud_workspace
+from services.ai_service import ai_service
+from api.workspaces_enhanced import (
     get_workspace_template_context,
     calculate_enhanced_compatibility,
     generate_organization_suggestions,
@@ -656,7 +656,7 @@ async def get_workspace_analytics(workspace_id: int, db: Session = Depends(get_d
         from sqlalchemy import and_, func as sql_func
         
         # Get task statistics for this workspace
-        from src.backend.models.task import Task
+        from models.task import Task
         
         # Task completion rate in last 30 days
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
@@ -780,3 +780,58 @@ async def update_ambient_sound(
     except Exception as e:
         logger.error(f"Error updating ambient sound: {e}")
         raise HTTPException(status_code=500, detail="Failed to update ambient sound")
+
+@router.get("/workspace-files")
+async def get_workspace_files(
+    workspace_id: Optional[int] = None,
+    user_id: int = 1,
+    db: Session = Depends(get_db)
+):
+    """
+    Get files for workspace(s) - compatible with frontend expectations
+    """
+    try:
+        from crud.crud_file import file_metadata as crud_file
+        
+        if workspace_id:
+            # Get files for specific workspace
+            try:
+                files = crud_file.get_by_workspace(db, workspace_id=workspace_id, skip=0, limit=100)
+            except AttributeError:
+                # Fallback if method doesn't exist
+                files = crud_file.get_by_user(db, user_id=user_id, skip=0, limit=100)
+                files = [f for f in files if f.workspace_id == workspace_id]
+        else:
+            # Get all files for user
+            files = crud_file.get_by_user(db, user_id=user_id, skip=0, limit=100)
+        
+        # Convert to expected format
+        results = []
+        for file in files:
+            results.append({
+                "id": str(file.id),
+                "name": file.name,
+                "type": file.file_type or "unknown",
+                "size": f"{file.size or 0} bytes",
+                "modified": file.updated_at.isoformat() if file.updated_at else "",
+                "tags": [],
+                "category": file.user_category or file.ai_category or "Other",
+                "priority": file.priority or "normal",
+                "workspace_id": file.workspace_id or 1,
+                "workspace_name": "Default",
+                "folder": file.folder_path or ""
+            })
+        
+        return {
+            "success": True,
+            "files": results,
+            "total": len(results)
+        }
+    except Exception as e:
+        logger.error(f"Error loading workspace files: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "files": [],
+            "total": 0
+        }

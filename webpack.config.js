@@ -70,7 +70,7 @@ module.exports = {
     compress: true,
     port: 3001,
     hot: true,
-    open: false,
+    open: true,
     historyApiFallback: true,
     allowedHosts: 'all',
     client: {

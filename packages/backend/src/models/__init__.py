@@ -1,7 +1,8 @@
-from src.backend.models.user import User, UserPreference
-from src.backend.models.workspace import Workspace
-from src.backend.models.task import Task, Project
-from src.backend.models.file_metadata import FileMetadata, Tag
+from models.user import User, UserPreference
+from models.workspace import Workspace
+from models.task import Task, Project
+from models.file_metadata import FileMetadata, Tag
+from models.error_log import ErrorLog
 
 __all__ = [
     "User", 
@@ -10,5 +11,6 @@ __all__ = [
     "Task", 
     "Project", 
     "FileMetadata", 
-    "Tag"
+    "Tag",
+    "ErrorLog"
 ]

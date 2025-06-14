@@ -36,7 +36,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({
         return await (window as any).electronAPI.apiRequest(endpoint, method, data);
       } else {
         // Fallback for development in browser
-        const url = `http://127.0.0.1:8000${endpoint}`;
+        const url = `http://127.0.0.1:8001${endpoint}`;
         const options: RequestInit = {
           method,
           headers: {

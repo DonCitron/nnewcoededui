@@ -10,15 +10,17 @@
   "scripts": {
     "start": "electron .",
     "dev": "npm-run-all --parallel dev:backend dev:react dev:electron",
-    "dev:backend": "cd src/backend && PYTHONPATH=../.. uvicorn main:app --reload --port 8000",
+    "dev:backend": "cd packages/backend/src && export PATH=\"$HOME/.local/bin:$PATH\" && uvicorn main:app --reload --port 8001 --host 0.0.0.0",
     "dev:react": "webpack serve --mode development",
-    "dev:electron": "wait-on http://localhost:3000 && electron . --dev",
+    "dev:electron": "wait-on http://localhost:3001 && electron . --dev",
     "build": "npm run build:react && npm run build:electron",
     "build:react": "webpack --mode production",
     "build:electron": "electron-builder",
     "test": "jest",
     "test:react": "jest --config jest.react.config.js",
-    "lint": "eslint src/frontend --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint src/frontend --ext .js,.jsx,.ts,.tsx",
+    "dev:monitor": "node console-monitor.js",
+    "dev:full": "npm-run-all --parallel dev:backend dev:react dev:monitor"
   },
   "keywords": [
     "productivity",
@@ -41,6 +43,8 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.15.30",
+    "chalk": "^4.1.2",
+    "puppeteer": "^22.0.0",
     "css-loader": "^7.1.2",
     "electron": "^36.4.0",
     "electron-builder": "^26.0.12",

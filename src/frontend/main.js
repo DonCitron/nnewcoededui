@@ -11,7 +11,7 @@ function startPythonBackend() {
   const backendDir = path.join(__dirname, '..', 'backend');
   const projectRoot = path.join(__dirname, '..', '..');
   
-  pythonProcess = spawn(pythonExecutable, ['-m', 'uvicorn', 'main:app', '--port', '8000'], {
+  pythonProcess = spawn(pythonExecutable, ['-m', 'uvicorn', 'main:app', '--port', '8001'], {
     cwd: backendDir,
     env: { ...process.env, PYTHONPATH: projectRoot }
   });
@@ -91,7 +91,7 @@ app.on('before-quit', () => {
 // IPC handlers for frontend-backend communication
 ipcMain.handle('api-request', async (event, endpoint, method = 'GET', data = null) => {
   try {
-    const url = `http://127.0.0.1:8000${endpoint}`;
+    const url = `http://127.0.0.1:8001${endpoint}`;
     const options = {
       method: method,
       headers: {
